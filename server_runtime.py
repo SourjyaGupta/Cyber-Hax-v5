@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import secrets
 import time
 from io import StringIO
@@ -9,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -16,6 +18,22 @@ from db import DB_READY, MatchHistory, SessionLocal
 from game_core import add_human_player, build_new_game, handle_command, serialize_state, update_temporary_effects
 
 app = FastAPI(title="Cyber Hax")
+
+
+def _cors_origins() -> list[str]:
+    raw_value = os.getenv("CYBER_HAX_ALLOWED_ORIGINS", "*").strip()
+    if not raw_value or raw_value == "*":
+        return ["*"]
+    return [origin.strip() for origin in raw_value.split(",") if origin.strip()]
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins(),
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 WEB_DIR = Path(__file__).resolve().parent / "web"
 app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")

@@ -151,6 +151,7 @@ python cyber_hax.py
 Current runtime assumptions:
 - `PORT` is used automatically by Render or similar hosts
 - no extra environment variables are required for local play
+- `CYBER_HAX_ALLOWED_ORIGINS` can be set to a comma-separated list of allowed web origins when the frontend is hosted separately from the backend
 
 Current architecture is intentionally simple:
 - in-memory room sessions
@@ -177,6 +178,14 @@ After deploy:
 - the web client is served from the same host
 - websocket connections automatically use the same origin by default
 - room invite links become shareable publicly
+
+### Hosting frontend on itch.io and backend on Render
+
+If you upload the HTML build to itch.io but keep the server on Render:
+- keep your Render URL live, for example `https://cyber-hax-server.onrender.com`
+- the client will now allow cross-origin room creation from itch.io-style hosts
+- the browser client also falls back to the Render server for itch-hosted builds, so `Create Room` works without manual host entry
+- if you want to lock this down later, set `CYBER_HAX_ALLOWED_ORIGINS` on Render to your itch.io page origin instead of leaving it open
 
 ## Known Limitations
 

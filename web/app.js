@@ -14,6 +14,9 @@
 ];
 
 const SVG_NS = "http://www.w3.org/2000/svg";
+const PROFILE_STORAGE_KEY = "cyberHaxProfile";
+const SERVER_STORAGE_KEY = "cyberHaxServerBase";
+const DEPLOYMENT_FALLBACK_SERVER_BASE = "wss://cyber-hax-server.onrender.com";
 
 const els = {
   joinSheet: document.getElementById("joinSheet"),
@@ -115,14 +118,28 @@ const state = {
 
 function loadProfile() {
   try {
-    return JSON.parse(localStorage.getItem("cyberHaxProfile") || "{}");
+    return JSON.parse(localStorage.getItem(PROFILE_STORAGE_KEY) || "{}");
   } catch {
     return {};
   }
 }
 
 function saveProfile() {
-  localStorage.setItem("cyberHaxProfile", JSON.stringify(state.profile));
+  localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(state.profile));
+}
+
+function loadStoredServerBase() {
+  try {
+    return normalizeServerBase(localStorage.getItem(SERVER_STORAGE_KEY) || "");
+  } catch {
+    return defaultServerBase();
+  }
+}
+
+function saveServerBase(value) {
+  try {
+    localStorage.setItem(SERVER_STORAGE_KEY, normalizeServerBase(value));
+  } catch {}
 }
 
 function playerStats(name) {
@@ -145,6 +162,10 @@ function randomCallsign() {
 
 function defaultServerBase() {
   const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+  const host = (window.location.hostname || "").toLowerCase();
+  if (!window.location.host || window.location.protocol === "file:") return DEPLOYMENT_FALLBACK_SERVER_BASE;
+  if (host === "127.0.0.1" || host === "localhost") return `${protocol}://${window.location.host}`;
+  if (host.endsWith(".itch.io") || host.endsWith(".itch.zone") || host.endsWith(".hwcdn.net")) return DEPLOYMENT_FALLBACK_SERVER_BASE;
   return `${protocol}://${window.location.host}`;
 }
 
@@ -157,6 +178,13 @@ function normalizeServerBase(rawValue) {
   value = value.replace(/\/+$/, "");
   const wsIndex = value.indexOf("/ws/");
   return wsIndex >= 0 ? value.slice(0, wsIndex) : value;
+}
+
+function apiBaseFromServerBase(serverBase) {
+  const value = normalizeServerBase(serverBase);
+  if (value.startsWith("wss://")) return `https://${value.slice(6)}`;
+  if (value.startsWith("ws://")) return `http://${value.slice(5)}`;
+  return value.replace(/\/+$/, "");
 }
 
 function safeRoomName(rawValue) {
@@ -353,7 +381,10 @@ async function toggleMusic() {
 
 function buildRoomLink() {
   if (!state.sessionName) return "";
-  return `${window.location.origin}/play?session=${encodeURIComponent(state.sessionName)}`;
+  const url = new URL(window.location.href);
+  url.searchParams.set("session", state.sessionName);
+  url.searchParams.set("server", state.serverBase || defaultServerBase());
+  return url.toString();
 }
 
 function buildChallengeText() {
@@ -529,6 +560,7 @@ function connectToServer(event, options = {}) {
   els.playerInput.value = state.playerName;
   els.sessionInput.value = state.sessionName;
   els.serverInput.value = state.serverBase;
+  saveServerBase(state.serverBase);
   syncUrl();
 
   if (state.ws) {
@@ -610,8 +642,14 @@ async function createRoomAndConnect() {
   await ensureFxContext();
   updateJoinStatus("Reserving a new duel room...", "accent");
   try {
-    const response = await fetch("/api/rooms/new");
+    const selectedServerBase = normalizeServerBase(els.serverInput.value || state.serverBase || defaultServerBase());
+    state.serverBase = selectedServerBase;
+    els.serverInput.value = selectedServerBase;
+    saveServerBase(selectedServerBase);
+    const response = await fetch(`${apiBaseFromServerBase(selectedServerBase)}/api/rooms/new`);
+    if (!response.ok) throw new Error(`room-create-${response.status}`);
     const payload = await response.json();
+    if (!payload.room_id) throw new Error("room-create-empty");
     els.sessionInput.value = payload.room_id || "";
     state.sessionName = payload.room_id || "";
     refreshInviteFields();
@@ -911,7 +949,7 @@ function bootstrap() {
   const params = new URLSearchParams(window.location.search);
   state.playerName = params.get("player") || randomCallsign();
   state.sessionName = params.get("session") || "";
-  state.serverBase = normalizeServerBase(params.get("server") || defaultServerBase());
+  state.serverBase = normalizeServerBase(params.get("server") || loadStoredServerBase() || defaultServerBase());
   els.playerInput.value = state.playerName;
   els.sessionInput.value = state.sessionName;
   els.serverInput.value = state.serverBase;
@@ -978,4 +1016,3 @@ function bootstrap() {
 }
 
 bootstrap();
-
