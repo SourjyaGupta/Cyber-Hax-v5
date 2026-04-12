@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
+import logging
 import secrets
 import time
 from io import StringIO
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -18,19 +18,14 @@ from db import DB_READY, MatchHistory, SessionLocal
 from game_core import add_human_player, build_new_game, handle_command, serialize_state, update_temporary_effects
 
 app = FastAPI(title="Cyber Hax")
+logger = logging.getLogger("cyber_hax.server")
+CORS_ORIGIN_REGEX = r"https://.*(itch\.io|ssl\.hwcdn\.net)$|http://localhost(:\d+)?|http://127\.0\.0\.1(:\d+)?"
 
-
-def _cors_origins() -> list[str]:
-    raw_value = os.getenv("CYBER_HAX_ALLOWED_ORIGINS", "*").strip()
-    if not raw_value or raw_value == "*":
-        return ["*"]
-    return [origin.strip() for origin in raw_value.split(",") if origin.strip()]
-
-
+# CORS is needed for itch.io-hosted HTML builds calling the Render API over fetch().
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_cors_origins(),
-    allow_credentials=False,
+    allow_origin_regex=CORS_ORIGIN_REGEX,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -71,14 +66,23 @@ async def health() -> dict[str, Any]:
     }
 
 
+@app.get("/api/test")
+async def test() -> dict[str, str]:
+    return {"status": "ok"}
+
+
 @app.get("/api/rooms/new")
 async def create_room(request: Request) -> dict[str, Any]:
-    room_id = _generate_room_code()
-    _get_or_create_session(room_id)
-    return {
-        "room_id": room_id,
-        "join_url": _build_join_url(request, room_id),
-    }
+    try:
+        room_id = _generate_room_code()
+        _get_or_create_session(room_id)
+        return {
+            "room_id": room_id,
+            "join_url": _build_join_url(request, room_id),
+        }
+    except Exception as exc:
+        logger.exception("Failed to create room")
+        raise HTTPException(status_code=500, detail={"error": "room_creation_failed", "message": str(exc)}) from exc
 
 
 @app.get("/api/rooms/{session_id}")
