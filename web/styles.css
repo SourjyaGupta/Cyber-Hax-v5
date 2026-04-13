@@ -1771,3 +1771,94 @@ select,
     cursor: default;
   }
 }
+
+.matchmaking-card {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+  border-radius: 26px;
+  border: 1px solid rgba(116, 236, 255, 0.2);
+  background:
+    radial-gradient(circle at top right, rgba(116, 236, 255, 0.08), transparent 34%),
+    linear-gradient(180deg, rgba(7, 18, 33, 0.92), rgba(8, 16, 29, 0.9));
+}
+
+.matchmaking-copy {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.matchmaking-copy h4 {
+  margin: 0;
+  font-family: "Consolas", "Cascadia Code", monospace;
+  font-size: 1.05rem;
+}
+
+.matchmaking-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.matchmaking-meta {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.matchmaking-status-copy {
+  margin: 0;
+}
+
+.matchmaking-actions {
+  align-items: stretch;
+}
+
+#sidebarMatchmakingButton {
+  flex: 1 1 100%;
+}
+
+.status-pill[data-state="searching"] {
+  border-color: rgba(116, 236, 255, 0.4);
+  color: var(--accent);
+}
+
+.status-pill[data-state="matched"] {
+  border-color: rgba(147, 255, 215, 0.42);
+  color: var(--server);
+}
+
+.status-pill[data-state="error"] {
+  border-color: rgba(255, 124, 170, 0.42);
+  color: var(--danger);
+}
+
+.ghost-btn:disabled,
+.primary-btn:disabled,
+.secondary-btn:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+  transform: none;
+}
+
+@media (max-width: 920px) {
+  .matchmaking-card {
+    padding: 0.95rem;
+  }
+
+  .matchmaking-status-row {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .matchmaking-copy h4 {
+    font-size: 1rem;
+  }
+
+  .matchmaking-meta {
+    font-size: 0.86rem;
+  }
+}
