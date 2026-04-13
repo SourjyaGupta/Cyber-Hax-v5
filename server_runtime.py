@@ -19,9 +19,9 @@ from game_core import add_human_player, build_new_game, handle_command, serializ
 
 app = FastAPI(title="Cyber Hax")
 logger = logging.getLogger("cyber_hax.server")
-CORS_ORIGIN_REGEX = r"https://.*(itch\.io|ssl\.hwcdn\.net)$|http://localhost(:\d+)?|http://127\.0\.0\.1(:\d+)?"
+CORS_ORIGIN_REGEX = r"https://.*(itch\.io|ssl\.hwcdn\.net|github\.io|netlify\.app)$|https://cyber-hax-server\.onrender\.com|http://localhost(:\d+)?|http://127\.0\.0\.1(:\d+)?"
 
-# CORS is needed for itch.io-hosted HTML builds calling the Render API over fetch().
+# CORS is needed for same-origin safety today and future static landing-site / itch integrations.
 app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=CORS_ORIGIN_REGEX,
@@ -46,6 +46,23 @@ MAX_CHAT_LENGTH = 280
 
 sessions: dict[str, dict[str, Any]] = {}
 
+PUBLIC_WEB_FILES = {
+    "app.js",
+    "styles.css",
+    "main_music.ogg",
+    "favicon.svg",
+    "robots.txt",
+    "sitemap.xml",
+    "google4bc64f1655e6ac6f.html",
+}
+
+
+def _public_web_file(filename: str) -> FileResponse:
+    path = WEB_DIR / filename
+    if filename not in PUBLIC_WEB_FILES or not path.is_file():
+        raise HTTPException(status_code=404, detail="Not found")
+    return FileResponse(path)
+
 
 @app.get("/")
 async def root() -> FileResponse:
@@ -55,6 +72,41 @@ async def root() -> FileResponse:
 @app.get("/play")
 async def play() -> FileResponse:
     return FileResponse(WEB_DIR / "index.html")
+
+
+@app.get("/app.js")
+async def web_app_js() -> FileResponse:
+    return _public_web_file("app.js")
+
+
+@app.get("/styles.css")
+async def web_styles() -> FileResponse:
+    return _public_web_file("styles.css")
+
+
+@app.get("/main_music.ogg")
+async def web_music() -> FileResponse:
+    return _public_web_file("main_music.ogg")
+
+
+@app.get("/favicon.svg")
+async def web_favicon() -> FileResponse:
+    return _public_web_file("favicon.svg")
+
+
+@app.get("/robots.txt")
+async def web_robots() -> FileResponse:
+    return _public_web_file("robots.txt")
+
+
+@app.get("/sitemap.xml")
+async def web_sitemap() -> FileResponse:
+    return _public_web_file("sitemap.xml")
+
+
+@app.get("/google4bc64f1655e6ac6f.html")
+async def web_google_verification() -> FileResponse:
+    return _public_web_file("google4bc64f1655e6ac6f.html")
 
 
 @app.get("/health")

@@ -7,6 +7,23 @@
       name="description"
       content="Cyber Hax v5 is a browser-first multiplayer hacker duel. Create a room, challenge a friend, and race through a live network to breach the core."
     />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <meta name="theme-color" content="#06101d" />
+    <meta name="application-name" content="Cyber Hax v5" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Cyber Hax v5 | Browser Multiplayer Hacker Duel" />
+    <meta property="og:description" content="Play Cyber Hax v5 in the browser, learn the rules, and challenge a friend to a live network duel." />
+    <meta property="og:url" content="https://cyber-hax.netlify.app/" />
+    <meta property="og:site_name" content="Cyber Hax v5" />
+    <meta property="og:image" content="https://cyber-hax.netlify.app/social-preview.svg" />
+    <meta property="og:image:alt" content="Cyber Hax v5 social preview showing a cyber network duel scene" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Cyber Hax v5 | Browser Multiplayer Hacker Duel" />
+    <meta name="twitter:description" content="Fast browser multiplayer hacker duels with room links, chat, and tactical network routing." />
+    <meta name="twitter:image" content="https://cyber-hax.netlify.app/social-preview.svg" />
+    <link rel="canonical" href="https://cyber-hax.netlify.app/" />
     <title>Cyber Hax v5 | Browser Multiplayer Hacker Duel</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -14,6 +31,54 @@
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap"
       rel="stylesheet"
     />
+    <!-- AdSense / site verification scripts can be added here later. -->
+    <meta name="google-site-verification" content="7DK0P8a8GC7s7tAv5NXuZSRS0B45ZXS3A1fwoPUqGBA" />
+    <link rel="icon" type="image/svg+xml" href="social-preview.svg" />
+    <link rel="apple-touch-icon" href="social-preview.svg" />
+    <link rel="manifest" href="manifest.json" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "name": "Cyber Hax v5",
+            "url": "https://cyber-hax.netlify.app/",
+            "description": "Static marketing site for Cyber Hax v5, a browser-first multiplayer hacker duel."
+          },
+          {
+            "@type": "VideoGame",
+            "name": "Cyber Hax v5",
+            "url": "https://cyber-hax-server.onrender.com/",
+            "playMode": "MultiPlayer",
+            "applicationCategory": "Game",
+            "genre": ["Strategy", "Multiplayer", "Browser Game"],
+            "description": "Cyber Hax v5 is a browser multiplayer hacker duel focused on readable tactical network routing."
+          },
+          {
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Do I need an account to play Cyber Hax v5?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. Players can join a room using a callsign and a shared room code or invite link."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How many players are supported in each room?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Each room is designed for two human players competing in the same live network duel."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -32,9 +97,10 @@
         <a href="#shots">Screenshots</a>
         <a href="#how">How To Play</a>
         <a href="#multiplayer">Multiplayer</a>
+        <a href="#faq">FAQ</a>
       </nav>
-      <a class="header-cta" data-itch-link href="https://YOUR-ITCH-PAGE.itch.io/cyber-hax-v5" target="_blank" rel="noreferrer">
-        Play On itch.io
+      <a class="header-cta" data-render-link href="https://cyber-hax-server.onrender.com" target="_blank" rel="noreferrer">
+        Play The Live Game
       </a>
     </header>
 
@@ -48,8 +114,8 @@
             race across a live node network full of locks, mines, traps, and short tactical windows.
           </p>
           <div class="hero-actions">
-            <a class="primary-link" data-itch-link href="https://YOUR-ITCH-PAGE.itch.io/cyber-hax-v5" target="_blank" rel="noreferrer">
-              Play Now
+            <a class="primary-link" data-render-link href="https://cyber-hax-server.onrender.com" target="_blank" rel="noreferrer">
+              Play On Render
             </a>
             <a class="secondary-link" href="#how">See How It Works</a>
           </div>
@@ -82,7 +148,7 @@
 
       <section class="support-strip reveal">
         <p>Designed for quick public playtests, first-time onboarding, and low-friction friend challenges.</p>
-        <p>Hosted game flow can stay on itch.io while your backend lives on Render.</p>
+        <p>The main live build is hosted directly from the Render game service, which keeps play and API traffic same-origin.</p>
       </section>
 
       <section class="section about reveal" id="about">
@@ -195,8 +261,47 @@
           </div>
           <div>
             <h3>Works With Public Hosting</h3>
-            <p>Use itch.io for the shareable front door and Render for the backend session server.</p>
+            <p>Start by sending players straight to the public Render build, then add static marketing funnels later.</p>
           </div>
+        </div>
+      </section>
+
+      <section class="section reveal" id="faq">
+        <div class="section-head">
+          <p class="eyebrow">FAQ</p>
+          <h2>Useful answers for players and site reviewers.</h2>
+        </div>
+        <div class="faq-grid">
+          <article>
+            <h3>Do I need an account?</h3>
+            <p>No. Cyber Hax v5 is designed for fast public testing, so players can join a room with just a callsign.</p>
+          </article>
+          <article>
+            <h3>How many players?</h3>
+            <p>Each live room supports two human operators competing on the same network graph.</p>
+          </article>
+          <article>
+            <h3>Can I share a private match?</h3>
+            <p>Yes. Create a room, copy the invite link or room code, and send it directly to a friend.</p>
+          </article>
+          <article>
+            <h3>What is on this site later?</h3>
+            <p>This landing page is intentionally static so it can host guides, updates, screenshots, FAQs, and AdSense safely.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section reveal" id="contact">
+        <div class="section-head">
+          <p class="eyebrow">Contact</p>
+          <h2>Press, feedback, and future partner info can live here.</h2>
+        </div>
+        <div class="contact-panel">
+          <p>
+            Add your real support email, creator handle, Discord, or business contact here before public promotion.
+            This makes the site more complete for players and future monetization review.
+          </p>
+          <p class="cta-note">Suggested placeholder: <a href="mailto:contact@example.com">contact@example.com</a></p>
         </div>
       </section>
 
@@ -204,21 +309,22 @@
         <p class="eyebrow">Ready To Challenge Someone?</p>
         <h2>Send players to the public game page and start collecting real matches.</h2>
         <div class="hero-actions">
-          <a class="primary-link" data-itch-link href="https://YOUR-ITCH-PAGE.itch.io/cyber-hax-v5" target="_blank" rel="noreferrer">
-            Play Cyber Hax v5
+          <a class="primary-link" data-render-link href="https://cyber-hax-server.onrender.com" target="_blank" rel="noreferrer">
+            Launch The Public Build
           </a>
           <a class="secondary-link" href="#top">Back To Top</a>
         </div>
       </section>
     </main>
 
+    <!-- Future AdSense body ad unit can be inserted in this area or between major sections. -->
     <footer class="site-footer">
       <div>
         <p>Cyber Hax v5</p>
         <span>Browser-first multiplayer hacker duel.</span>
       </div>
       <div class="footer-links">
-        <a href="#">Privacy Policy Placeholder</a>
+        <a href="privacy.html">Privacy Policy</a>
         <a href="mailto:contact@example.com">Contact Placeholder</a>
       </div>
       <span class="footer-year" id="footerYear"></span>

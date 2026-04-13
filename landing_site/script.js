@@ -1,13 +1,12 @@
-// Replace this once with your real itch.io page URL and every CTA on the landing site will update.
-const ITCH_PAGE_URL = "https://YOUR-ITCH-PAGE.itch.io/cyber-hax-v5";
+﻿const PUBLIC_GAME_URL = "https://cyber-hax-server.onrender.com";
 
-document.querySelectorAll("[data-itch-link]").forEach((link) => {
-  link.setAttribute("href", ITCH_PAGE_URL);
+document.querySelectorAll("[data-render-link]").forEach((link) => {
+  link.setAttribute("href", PUBLIC_GAME_URL);
 });
 
 const yearNode = document.getElementById("footerYear");
 if (yearNode) {
-  yearNode.textContent = `© ${new Date().getFullYear()} Cyber Hax v5`;
+  yearNode.textContent = `(c) ${new Date().getFullYear()} Cyber Hax v5`;
 }
 
 const observer = new IntersectionObserver(

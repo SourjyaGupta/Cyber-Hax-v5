@@ -1,0 +1,18 @@
+{
+  "name": "Cyber Hax v5",
+  "short_name": "Cyber Hax",
+  "description": "Browser-first multiplayer hacker duel with shareable rooms, realtime chat, and tactical network routing.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#06101d",
+  "theme_color": "#06101d",
+  "icons": [
+    {
+      "src": "social-preview.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

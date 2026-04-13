@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Cyber Hax v5 social preview</title>
+  <desc id="desc">A cyber-styled preview image for the Cyber Hax v5 browser multiplayer game.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#07121f" />
+      <stop offset="100%" stop-color="#04080f" />
+    </linearGradient>
+    <radialGradient id="glowA" cx="0.18" cy="0.18" r="0.5">
+      <stop offset="0%" stop-color="#2b8cff" stop-opacity="0.38" />
+      <stop offset="100%" stop-color="#2b8cff" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="glowB" cx="0.82" cy="0.2" r="0.4">
+      <stop offset="0%" stop-color="#46e2ff" stop-opacity="0.28" />
+      <stop offset="100%" stop-color="#46e2ff" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0b1a2d" stop-opacity="0.95" />
+      <stop offset="100%" stop-color="#09111e" stop-opacity="0.9" />
+    </linearGradient>
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)" />
+  <rect width="1200" height="630" fill="url(#glowA)" />
+  <rect width="1200" height="630" fill="url(#glowB)" />
+
+  <g opacity="0.12">
+    <path d="M0 70H1200M0 140H1200M0 210H1200M0 280H1200M0 350H1200M0 420H1200M0 490H1200M0 560H1200" stroke="#cfe9ff" />
+    <path d="M80 0V630M200 0V630M320 0V630M440 0V630M560 0V630M680 0V630M800 0V630M920 0V630M1040 0V630M1160 0V630" stroke="#cfe9ff" />
+  </g>
+
+  <g transform="translate(70 70)">
+    <rect width="1060" height="490" rx="28" fill="url(#panel)" stroke="#72e7ff" stroke-opacity="0.18" />
+
+    <g transform="translate(56 58)">
+      <text x="0" y="0" fill="#78fff0" font-family="'JetBrains Mono', Consolas, monospace" font-size="22" letter-spacing="5">BROWSER MULTIPLAYER HACKER DUEL</text>
+      <text x="0" y="82" fill="#f2fbff" font-family="'Space Grotesk', Arial, sans-serif" font-size="78" font-weight="700">Cyber Hax v5</text>
+      <text x="0" y="146" fill="#9cb3c9" font-family="'Space Grotesk', Arial, sans-serif" font-size="31">
+        Create a room. Invite a rival. Breach the network core first.
+      </text>
+      <text x="0" y="338" fill="#9cb3c9" font-family="'Space Grotesk', Arial, sans-serif" font-size="28">
+        Live rooms • tactical node routing • realtime chat • browser-first play
+      </text>
+
+      <rect x="0" y="390" width="310" height="64" rx="32" fill="#46e2ff" />
+      <text x="36" y="432" fill="#07121f" font-family="'Space Grotesk', Arial, sans-serif" font-size="29" font-weight="700">Play at cyber-hax.netlify.app</text>
+    </g>
+
+    <g transform="translate(710 88)">
+      <path d="M0 84L140 30L250 104L160 232L42 182Z" fill="none" stroke="#46e2ff" stroke-width="3" stroke-opacity="0.82" />
+      <path d="M140 30L286 44L338 170L250 104Z" fill="none" stroke="#2b8cff" stroke-width="3" stroke-opacity="0.72" />
+      <path d="M42 182L110 320L250 286L160 232Z" fill="none" stroke="#ffd36f" stroke-width="3" stroke-opacity="0.72" />
+
+      <circle cx="0" cy="84" r="13" fill="#46e2ff" filter="url(#softGlow)" />
+      <circle cx="140" cy="30" r="13" fill="#46e2ff" filter="url(#softGlow)" />
+      <circle cx="250" cy="104" r="13" fill="#ff7ea6" filter="url(#softGlow)" />
+      <circle cx="160" cy="232" r="13" fill="#46e2ff" filter="url(#softGlow)" />
+      <circle cx="42" cy="182" r="13" fill="#46e2ff" filter="url(#softGlow)" />
+      <circle cx="110" cy="320" r="13" fill="#46e2ff" filter="url(#softGlow)" />
+      <circle cx="250" cy="286" r="13" fill="#46e2ff" filter="url(#softGlow)" />
+      <circle cx="338" cy="170" r="26" fill="#ffd36f" filter="url(#softGlow)" />
+
+      <rect x="18" y="354" width="330" height="90" rx="22" fill="#07111d" stroke="#77dfff" stroke-opacity="0.2" />
+      <text x="38" y="388" fill="#78fff0" font-family="'JetBrains Mono', Consolas, monospace" font-size="18">&gt; create room</text>
+      <text x="38" y="416" fill="#d8f7ff" font-family="'JetBrains Mono', Consolas, monospace" font-size="18">[room] J7Q4XZ ready</text>
+      <text x="38" y="444" fill="#d8f7ff" font-family="'JetBrains Mono', Consolas, monospace" font-size="18">[chat] rival linked</text>
+    </g>
+  </g>
+</svg>
