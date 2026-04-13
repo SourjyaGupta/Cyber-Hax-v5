@@ -17,6 +17,7 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 const PROFILE_STORAGE_KEY = "cyberHaxProfile";
 const SERVER_STORAGE_KEY = "cyberHaxServerBase";
 const DEPLOYMENT_FALLBACK_SERVER_BASE = "wss://cyber-hax-server.onrender.com";
+const HOSTED_BACKEND_HOST = "cyber-hax-server.onrender.com";
 
 const els = {
   joinSheet: document.getElementById("joinSheet"),
@@ -130,7 +131,15 @@ function saveProfile() {
 
 function loadStoredServerBase() {
   try {
-    return normalizeServerBase(localStorage.getItem(SERVER_STORAGE_KEY) || "");
+    const storedValue = localStorage.getItem(SERVER_STORAGE_KEY) || "";
+    const normalized = normalizeServerBase(storedValue);
+    if (!storedValue) return normalized;
+
+    const storedHost = normalized.replace(/^wss?:\/\//i, "").toLowerCase();
+    if (shouldUseHostedBackend() && storedHost === window.location.host.toLowerCase()) {
+      return DEPLOYMENT_FALLBACK_SERVER_BASE;
+    }
+    return normalized;
   } catch {
     return defaultServerBase();
   }
@@ -160,13 +169,25 @@ function randomCallsign() {
   return `Operator-${Math.floor(100 + Math.random() * 900)}`;
 }
 
+function shouldUseHostedBackend() {
+  const host = (window.location.hostname || "").toLowerCase();
+  if (!window.location.host || window.location.protocol === "file:") return true;
+  if (host === "127.0.0.1" || host === "localhost") return false;
+  if (host === HOSTED_BACKEND_HOST) return false;
+  return (
+    host.endsWith(".itch.io") ||
+    host.endsWith(".itch.zone") ||
+    host.endsWith(".hwcdn.net") ||
+    host.endsWith(".netlify.app") ||
+    host.endsWith(".github.io")
+  );
+}
+
 function defaultServerBase() {
   const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-  const host = (window.location.hostname || "").toLowerCase();
   if (!window.location.host || window.location.protocol === "file:") return DEPLOYMENT_FALLBACK_SERVER_BASE;
-  if (host === "127.0.0.1" || host === "localhost") return `${protocol}://${window.location.host}`;
-  if (host.endsWith(".itch.io") || host.endsWith(".itch.zone") || host.endsWith(".hwcdn.net")) return DEPLOYMENT_FALLBACK_SERVER_BASE;
-  return `${protocol}://${window.location.host}`;
+  if (!shouldUseHostedBackend()) return `${protocol}://${window.location.host}`;
+  return DEPLOYMENT_FALLBACK_SERVER_BASE;
 }
 
 function normalizeServerBase(rawValue) {

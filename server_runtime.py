@@ -19,7 +19,7 @@ from game_core import add_human_player, build_new_game, handle_command, serializ
 
 app = FastAPI(title="Cyber Hax")
 logger = logging.getLogger("cyber_hax.server")
-CORS_ORIGIN_REGEX = r"https://.*(itch\.io|ssl\.hwcdn\.net)$|http://localhost(:\d+)?|http://127\.0\.0\.1(:\d+)?"
+CORS_ORIGIN_REGEX = r"https://.*(itch\.io|ssl\.hwcdn\.net|github\.io|netlify\.app)$|http://localhost(:\d+)?|http://127\.0\.0\.1(:\d+)?"
 
 # CORS is needed for itch.io-hosted HTML builds calling the Render API over fetch().
 app.add_middleware(
@@ -46,6 +46,20 @@ MAX_CHAT_LENGTH = 280
 
 sessions: dict[str, dict[str, Any]] = {}
 
+PUBLIC_WEB_FILES = {
+    "app.js",
+    "styles.css",
+    "main_music.ogg",
+    "favicon.svg",
+}
+
+
+def _public_web_file(filename: str) -> FileResponse:
+    path = WEB_DIR / filename
+    if filename not in PUBLIC_WEB_FILES or not path.is_file():
+        raise HTTPException(status_code=404, detail="Not found")
+    return FileResponse(path)
+
 
 @app.get("/")
 async def root() -> FileResponse:
@@ -55,6 +69,26 @@ async def root() -> FileResponse:
 @app.get("/play")
 async def play() -> FileResponse:
     return FileResponse(WEB_DIR / "index.html")
+
+
+@app.get("/app.js")
+async def web_app_js() -> FileResponse:
+    return _public_web_file("app.js")
+
+
+@app.get("/styles.css")
+async def web_styles() -> FileResponse:
+    return _public_web_file("styles.css")
+
+
+@app.get("/main_music.ogg")
+async def web_music() -> FileResponse:
+    return _public_web_file("main_music.ogg")
+
+
+@app.get("/favicon.svg")
+async def web_favicon() -> FileResponse:
+    return _public_web_file("favicon.svg")
 
 
 @app.get("/health")
