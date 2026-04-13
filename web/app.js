@@ -128,6 +128,14 @@ function saveProfile() {
   localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(state.profile));
 }
 
+function loadStoredServerBase() {
+  try {
+    return normalizeServerBase(localStorage.getItem(SERVER_STORAGE_KEY) || "");
+  } catch {
+    return defaultServerBase();
+  }
+}
+
 function saveServerBase(value) {
   try {
     localStorage.setItem(SERVER_STORAGE_KEY, normalizeServerBase(value));
@@ -153,8 +161,12 @@ function randomCallsign() {
 }
 
 function defaultServerBase() {
-  // Public Render build defaults to the hosted multiplayer backend.
-  return DEPLOYMENT_FALLBACK_SERVER_BASE;
+  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+  const host = (window.location.hostname || "").toLowerCase();
+  if (!window.location.host || window.location.protocol === "file:") return DEPLOYMENT_FALLBACK_SERVER_BASE;
+  if (host === "127.0.0.1" || host === "localhost") return `${protocol}://${window.location.host}`;
+  if (host.endsWith(".itch.io") || host.endsWith(".itch.zone") || host.endsWith(".hwcdn.net")) return DEPLOYMENT_FALLBACK_SERVER_BASE;
+  return `${protocol}://${window.location.host}`;
 }
 
 function normalizeServerBase(rawValue) {
@@ -166,6 +178,13 @@ function normalizeServerBase(rawValue) {
   value = value.replace(/\/+$/, "");
   const wsIndex = value.indexOf("/ws/");
   return wsIndex >= 0 ? value.slice(0, wsIndex) : value;
+}
+
+function apiBaseFromServerBase(serverBase) {
+  const value = normalizeServerBase(serverBase);
+  if (value.startsWith("wss://")) return `https://${value.slice(6)}`;
+  if (value.startsWith("ws://")) return `http://${value.slice(5)}`;
+  return value.replace(/\/+$/, "");
 }
 
 function safeRoomName(rawValue) {
@@ -627,7 +646,7 @@ async function createRoomAndConnect() {
     state.serverBase = selectedServerBase;
     els.serverInput.value = selectedServerBase;
     saveServerBase(selectedServerBase);
-    const response = await fetch("https://cyber-hax-server.onrender.com/api/rooms/new");
+    const response = await fetch(`${apiBaseFromServerBase(selectedServerBase)}/api/rooms/new`);
     if (!response.ok) throw new Error(`room-create-${response.status}`);
     const payload = await response.json();
     if (!payload.room_id) throw new Error("room-create-empty");
@@ -636,8 +655,7 @@ async function createRoomAndConnect() {
     refreshInviteFields();
     connectToServer();
   } catch {
-    updateJoinStatus("Create Room is unavailable right now. Enter a room code manually and press Join Room.", "warning");
-    els.sessionInput.focus();
+    updateJoinStatus("Could not create a room on this server.", "danger");
     playUiTone("error");
   }
 }
@@ -931,7 +949,7 @@ function bootstrap() {
   const params = new URLSearchParams(window.location.search);
   state.playerName = params.get("player") || randomCallsign();
   state.sessionName = params.get("session") || "";
-  state.serverBase = normalizeServerBase(params.get("server") || defaultServerBase());
+  state.serverBase = normalizeServerBase(params.get("server") || loadStoredServerBase() || defaultServerBase());
   els.playerInput.value = state.playerName;
   els.sessionInput.value = state.sessionName;
   els.serverInput.value = state.serverBase;

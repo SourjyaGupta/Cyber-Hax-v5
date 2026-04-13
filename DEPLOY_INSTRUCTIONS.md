@@ -1,214 +1,170 @@
-﻿# Cyber Hax v5 Deploy Instructions
+# Cyber Hax v5 Deploy Instructions
 
-## 1. Public Render-hosted game
+## 1. `itch_build/` usage
 
-The main playable browser build now lives in `web/` and is intended to be served by the same FastAPI service that runs the multiplayer API and websocket backend.
+`itch_build/` is the HTML5 package intended for itch.io upload.
 
-Public URL:
-- `https://cyber-hax-server.onrender.com`
+It is already configured to:
+- use relative asset paths
+- connect to the Render backend at `wss://cyber-hax-server.onrender.com`
+- call room creation at `https://cyber-hax-server.onrender.com/api/rooms/new`
+- fail gracefully into manual room-code joining if room creation is unavailable
 
-Backend assumptions:
-- HTTP API base: `https://cyber-hax-server.onrender.com`
-- WebSocket base: `wss://cyber-hax-server.onrender.com`
+Files included:
+- `index.html`
+- `app.js`
+- `styles.css`
+- `main_music.ogg`
+- `favicon.svg`
 
-Why this setup matters:
-- the game page, API, and websocket service all come from the same Render app
-- this reduces cross-origin issues for public play
-- invite links can point directly to the same public host
+## 2. How to zip `itch_build/` for itch.io
 
-## 2. Files served from FastAPI
+Important: the files must be at the ZIP root, not inside an extra nested folder.
 
-FastAPI serves the public game from the `web/` folder.
-
-Important files:
-- `web/index.html`
-- `web/app.js`
-- `web/styles.css`
-- `web/main_music.ogg`
-- `web/favicon.svg`
-
-Public routing intent:
-- `GET /` -> main playable game page
-- `GET /play?session=ROOMCODE` -> same playable page with room info
-- `GET /styles.css` -> CSS
-- `GET /app.js` -> browser client JS
-- `GET /main_music.ogg` -> audio
-- `GET /favicon.svg` -> icon
-- existing `GET /api/...` routes remain active
-- existing `/ws/{session_id}` websocket route remains active
-
-Implementation notes:
-- root-level assets are served from the same `web/` directory
-- API and websocket routes are defined before the catch-all public static mount so multiplayer behavior is preserved
-
-## 3. How the public web game behaves
-
-The public Render build is configured to:
-- use relative asset references in `web/index.html`
-- default to `wss://cyber-hax-server.onrender.com`
-- call `https://cyber-hax-server.onrender.com/api/rooms/new` for room creation
-- gracefully fall back to manual room code entry if create-room fails
-- preserve chat, room controls, command deck, map, modals, audio, reconnect handling, and invites
-
-## 4. Push and redeploy on Render
+### PowerShell example
 
 From the repo root:
 
 ```powershell
 cd D:\Projects\Cyber\Cyber-Hax-v5
-git add .
-git commit -m "Prepare public Render build and landing site"
-git push origin main
+Compress-Archive -Path .\itch_build\* -DestinationPath .\Cyber-Hax-v5-itch.zip -Force
 ```
 
-Then in Render:
-1. Open your service dashboard
-2. Select the `cyber-hax-server` service
-3. Trigger `Manual Deploy` or let auto-deploy run from `main`
-4. Wait for the deploy to finish
+Upload `Cyber-Hax-v5-itch.zip` to itch.io as an HTML game.
 
-Expected start command:
+## 3. Files that must be at the ZIP root
 
-```text
-uvicorn server_main:app --host 0.0.0.0 --port $PORT
-```
+These should appear immediately when the ZIP opens:
+- `index.html`
+- `app.js`
+- `styles.css`
+- `main_music.ogg`
+- `favicon.svg`
 
-## 5. How to test the game publicly
+Do not zip the parent folder itself if that creates `itch_build/index.html` inside the archive.
 
-After Render finishes deploying:
-1. Open `https://cyber-hax-server.onrender.com`
-2. Click `Create Room`
-3. Confirm a room code appears
-4. Open the shared link in a second browser or device
-5. Join with a different callsign
-6. Confirm chat, movement, commands, logs, and rematch still work
+## 4. `local_build/` usage for FastAPI testing
 
-Recommended quick checks:
-- `https://cyber-hax-server.onrender.com/health`
-- `https://cyber-hax-server.onrender.com/api/test`
-- `https://cyber-hax-server.onrender.com/api/rooms/new`
+`local_build/` is the same client packaged for a local FastAPI setup that serves assets from `/static/...`.
 
-## 6. Landing site deployment on Netlify
+It uses:
+- `/static/styles.css`
+- `/static/app.js`
+- `/static/main_music.ogg`
+- `/static/favicon.svg`
 
-The separate static marketing site lives in `landing_site/`.
+### Recommended local test approach
 
-Files:
+Use `local_build/` as the folder mounted to `/static` and serve `local_build/index.html` at `/`.
+
+If you want to test it with the current app:
+1. point `WEB_DIR` in `server_runtime.py` to `local_build`
+2. run the server locally
+3. open `http://127.0.0.1:8000`
+
+Local build behavior:
+- defaults to `ws://127.0.0.1:8000` when there is no better same-origin host
+- still supports manual room code entry
+- still keeps the same UI, chat, invite flow, reconnect handling, command deck, and modals
+
+## 5. Deploy `landing_site/` on GitHub Pages
+
+`landing_site/` is a separate static marketing site. It does not embed the game by default. It sends traffic to your itch.io page.
+
+### Files
 - `landing_site/index.html`
 - `landing_site/styles.css`
 - `landing_site/script.js`
-- `landing_site/privacy.html`
 
-### Netlify deploy
+### GitHub Pages steps
 
-Option A: drag-and-drop
+1. Put the contents of `landing_site/` into a repo or branch for the site.
+2. Commit and push.
+3. In GitHub:
+   - open `Settings`
+   - open `Pages`
+   - choose the branch/folder you want to publish
+4. Wait for GitHub Pages to deploy.
+5. Replace the placeholder itch URL in `landing_site/script.js`.
+
+## 6. Deploy `landing_site/` on Netlify
+
+### Drag-and-drop option
+
 1. Zip the contents of `landing_site/`
 2. Log in to Netlify
-3. Create a new site from the folder or ZIP
+3. Create a new site by dragging the folder or ZIP into Netlify
+4. Replace the placeholder itch URL in `landing_site/script.js`
 
-Option B: Git-based
-1. Push `landing_site/` to your repo
-2. Create a new Netlify site from Git
-3. Set the publish directory to `landing_site`
+### Git-based option
+
+1. Push `landing_site/` to GitHub
+2. Create a new Netlify site from that repo
+3. Set publish directory to `landing_site`
 4. Deploy
 
-## 7. Landing site deployment on GitHub Pages
+## 7. Where to paste Google AdSense later
 
-1. Push the project to GitHub
-2. Create a branch or repo for the marketing site if you want to keep it isolated
-3. In GitHub Pages settings, publish the `landing_site` directory via your preferred Pages workflow
-4. Make sure the published files are the contents of `landing_site/`, not a parent folder
+There are two prepared places:
 
-## 8. Where to paste Google AdSense later
+### In `landing_site/index.html`
 
-Prepared placeholders already exist in `landing_site/index.html`:
-
-### In the head
 Search for:
 
 ```html
-<!-- AdSense / site verification scripts can be added here later. -->
+<!-- Future AdSense slot: between content sections -->
 ```
 
-### In the body
-Search for:
+That section currently contains a visible placeholder block. You can replace or augment it with AdSense markup later.
 
-```html
-<!-- Future AdSense body ad unit can be inserted in this area or between major sections. -->
-```
+### In `<head>`
 
-Do not insert fake AdSense code. Add your real account script and ad units only after the site is finalized.
+You can also add the AdSense script tag inside `landing_site/index.html` `<head>` when you are ready.
 
-## 9. How to help Google discover the project
+## 8. How to test multiplayer with multiple room codes
 
-### Public Render game
+### On the itch build
 
-The Render-hosted game now includes:
-- `web/robots.txt`
-- `web/sitemap.xml`
-- indexable meta tags in `web/index.html`
+1. Open the uploaded game in two separate browser windows or two devices.
+2. In one window, click `Create Room`.
+3. Share the generated link or tell the second player the room code.
+4. In the second window, join the same room code.
 
-After redeploying Render, test:
-- `https://cyber-hax-server.onrender.com/robots.txt`
-- `https://cyber-hax-server.onrender.com/sitemap.xml`
+### Manual room-code fallback
 
-### Landing site
+If `Create Room` fails:
+1. type a room code manually in the `Room Code` field, for example `ALPHA1`
+2. have the second player type the same room code
+3. both players press `Join Room`
 
-The landing site now includes:
-- `landing_site/robots.txt`
-- `landing_site/sitemap.xml`
-- canonical/meta tags in `landing_site/index.html`
-- a privacy page and FAQ content for better indexing quality
+## 9. Notes about create-room endpoint fallback
 
-Landing-site domain currently configured as:
-- `https://cyber-hax.netlify.app`
+The itch build is intentionally resilient:
+- it tries `https://cyber-hax-server.onrender.com/api/rooms/new`
+- if that endpoint is missing, sleeping, or failing, the UI does not dead-end
+- the player gets a warning and can still enter a room code manually
 
-### Google Search Console steps
+This keeps public playtests alive even if automated room creation is temporarily unavailable.
 
-Once the public site is live:
-1. Open Google Search Console
-2. Add your site property
-3. Verify ownership
-4. Submit your sitemap URL
-5. Use URL inspection on the homepage and privacy page
-6. Request indexing
+## 10. Recommended itch embed settings
 
-## 10. Why the landing site is better for ads than the playable game
+Recommended:
+- width: `1280`
+- height: `1000` or `1100`
+- fullscreen: enabled
+- scrollbars: enabled if needed
 
-A separate landing site is better for ads because:
-- it is easier to keep clean, readable, and content-rich for review
-- it can host About, FAQ, screenshots, privacy, and contact information
-- ads in a live multiplayer game UI would compete with gameplay clarity and trust
-- the public game page should stay fast and low-friction
+These settings give the board, sidebar, terminal, and chat enough room while still behaving responsively.
 
-## 11. Assumptions made
+## 11. Final checklist before publishing
 
-Current assumptions:
-- the main public playable URL remains `https://cyber-hax-server.onrender.com`
-- Render continues to host both the FastAPI backend and the public game page
-- the `web/` folder is the canonical public browser build
-- the `landing_site/` folder is a separate static marketing site
-- no account system is required for the first public release
+### For itch.io
+- verify the ZIP contains `index.html` at the root
+- verify the uploaded build opens without missing CSS/JS/audio
+- verify one player can create or manually join a room
+- verify a second player can connect to the same room
 
-## 12. Remaining server-side issues
-
-Still unresolved or worth improving later:
-- room/session state is still memory-backed, so a Render restart clears active rooms
-- Render cold starts may briefly delay room creation after inactivity
-- there is still no persistent user system or leaderboard backend
-- if you later use a custom landing-site domain, update the CORS origin regex if that domain needs direct API access
-
-## 13. Local testing notes
-
-To run locally:
-
-```powershell
-cd D:\Projects\Cyber\Cyber-Hax-v5
-python -m pip install -r requirements.txt
-uvicorn server_main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-Then open:
-
-```text
-http://127.0.0.1:8000
-```
+### For the landing site
+- replace the placeholder itch URL in `landing_site/script.js`
+- replace screenshot placeholders with real captures when available
+- replace privacy/contact placeholders before public monetization
