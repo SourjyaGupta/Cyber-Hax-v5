@@ -16,26 +16,15 @@
 const SVG_NS = "http://www.w3.org/2000/svg";
 const PROFILE_STORAGE_KEY = "cyberHaxProfile";
 const SERVER_STORAGE_KEY = "cyberHaxServerBase";
-const MATCHMAKING_STORAGE_KEY = "cyberHaxClientId";
-const INTERFACE_MODE_STORAGE_KEY = "cyberHaxInterfaceMode";
-const CONSOLE_TAB_STORAGE_KEY = "cyberHaxConsoleTab";
 const DEPLOYMENT_FALLBACK_SERVER_BASE = "wss://cyber-hax-server.onrender.com";
-const HOSTED_BACKEND_HOST = "cyber-hax-server.onrender.com";
-const TOUCH_MEDIA_QUERY = "(hover: none), (pointer: coarse)";
-const COMPACT_MEDIA_QUERY = "(max-width: 920px)";
-const MATCHMAKING_HEARTBEAT_MS = 15000;
 
 const els = {
   joinSheet: document.getElementById("joinSheet"),
   joinForm: document.getElementById("joinForm"),
   createRoomButton: document.getElementById("createRoomButton"),
-  findMatchButton: document.getElementById("findMatchButton"),
-  cancelMatchButton: document.getElementById("cancelMatchButton"),
   playerInput: document.getElementById("playerInput"),
   sessionInput: document.getElementById("sessionInput"),
   serverInput: document.getElementById("serverInput"),
-  heroDetails: document.getElementById("heroDetails"),
-  advancedServer: document.getElementById("advancedServer"),
   joinStatus: document.getElementById("joinStatus"),
   resumeButton: document.getElementById("resumeButton"),
   landingInviteHint: document.getElementById("landingInviteHint"),
@@ -43,14 +32,8 @@ const els = {
   inviteButton: document.getElementById("inviteButton"),
   sidebarInviteButton: document.getElementById("sidebarInviteButton"),
   sidebarHelpButton: document.getElementById("sidebarHelpButton"),
-  sidebarMatchmakingButton: document.getElementById("sidebarMatchmakingButton"),
   settingsToggle: document.getElementById("settingsToggle"),
   musicToggle: document.getElementById("musicToggle"),
-  themeToggle: document.getElementById("themeToggle"),
-  deckStatusPill: document.getElementById("deckStatusPill"),
-  matchmakingStatusPill: document.getElementById("matchmakingStatusPill"),
-  matchmakingMessage: document.getElementById("matchmakingMessage"),
-  matchmakingMeta: document.getElementById("matchmakingMeta"),
   connectionPill: document.getElementById("connectionPill"),
   sessionPill: document.getElementById("sessionPill"),
   networkSvg: document.getElementById("networkSvg"),
@@ -104,25 +87,17 @@ const els = {
   rematchButton: document.getElementById("rematchButton"),
   restartButton: document.getElementById("restartButton"),
   bgMusic: document.getElementById("bgMusic"),
-  consoleTabs: Array.from(document.querySelectorAll("[data-console-tab]")),
-  consolePanes: Array.from(document.querySelectorAll("[data-console-pane]")),
 };
 
 const state = {
   ws: null,
-  matchmakingWs: null,
   connectionStatus: "idle",
-  matchmakingStatus: "idle",
   reconnectAttempts: 0,
   reconnectTimer: null,
-  matchmakingHeartbeatTimer: null,
   serverBase: "",
   sessionName: "",
   playerName: "",
   assignedPlayer: "",
-  clientId: loadClientId(),
-  matchmakingMessage: "We will create a fresh session and move both players into the same live game as soon as a match is found.",
-  matchmakingMeta: "Queue empty. Press find match to search worldwide.",
   gameState: null,
   room: null,
   logs: [
@@ -139,17 +114,7 @@ const state = {
   clientNowBase: 0,
   profile: loadProfile(),
   fxContext: null,
-  interfaceMode: loadInterfaceMode(),
-  activeConsoleTab: loadConsoleTab(),
 };
-
-function isTouchMode() {
-  return window.matchMedia(TOUCH_MEDIA_QUERY).matches;
-}
-
-function isCompactLayout() {
-  return window.matchMedia(COMPACT_MEDIA_QUERY).matches;
-}
 
 function loadProfile() {
   try {
@@ -163,30 +128,9 @@ function saveProfile() {
   localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(state.profile));
 }
 
-function loadClientId() {
-  try {
-    let clientId = localStorage.getItem(MATCHMAKING_STORAGE_KEY) || "";
-    if (!clientId) {
-      clientId = window.crypto?.randomUUID?.() || `client-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-      localStorage.setItem(MATCHMAKING_STORAGE_KEY, clientId);
-    }
-    return clientId;
-  } catch {
-    return `client-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  }
-}
-
 function loadStoredServerBase() {
   try {
-    const storedValue = localStorage.getItem(SERVER_STORAGE_KEY) || "";
-    const normalized = normalizeServerBase(storedValue);
-    if (!storedValue) return normalized;
-
-    const storedHost = normalized.replace(/^wss?:\/\//i, "").toLowerCase();
-    if (shouldUseHostedBackend() && storedHost === window.location.host.toLowerCase()) {
-      return DEPLOYMENT_FALLBACK_SERVER_BASE;
-    }
-    return normalized;
+    return normalizeServerBase(localStorage.getItem(SERVER_STORAGE_KEY) || "");
   } catch {
     return defaultServerBase();
   }
@@ -195,35 +139,6 @@ function loadStoredServerBase() {
 function saveServerBase(value) {
   try {
     localStorage.setItem(SERVER_STORAGE_KEY, normalizeServerBase(value));
-  } catch {}
-}
-
-function loadInterfaceMode() {
-  try {
-    return localStorage.getItem(INTERFACE_MODE_STORAGE_KEY) === "deck" ? "deck" : "signal";
-  } catch {
-    return "signal";
-  }
-}
-
-function saveInterfaceMode() {
-  try {
-    localStorage.setItem(INTERFACE_MODE_STORAGE_KEY, state.interfaceMode);
-  } catch {}
-}
-
-function loadConsoleTab() {
-  try {
-    const stored = localStorage.getItem(CONSOLE_TAB_STORAGE_KEY) || "";
-    return ["feed", "deck", "chat"].includes(stored) ? stored : "feed";
-  } catch {
-    return "feed";
-  }
-}
-
-function saveConsoleTab() {
-  try {
-    localStorage.setItem(CONSOLE_TAB_STORAGE_KEY, state.activeConsoleTab);
   } catch {}
 }
 
@@ -245,24 +160,8 @@ function randomCallsign() {
   return `Operator-${Math.floor(100 + Math.random() * 900)}`;
 }
 
-function shouldUseHostedBackend() {
-  const host = (window.location.hostname || "").toLowerCase();
-  if (!window.location.host || window.location.protocol === "file:") return true;
-  if (host === "127.0.0.1" || host === "localhost") return false;
-  if (host === HOSTED_BACKEND_HOST) return false;
-  return (
-    host.endsWith(".itch.io") ||
-    host.endsWith(".itch.zone") ||
-    host.endsWith(".hwcdn.net") ||
-    host.endsWith(".netlify.app") ||
-    host.endsWith(".github.io")
-  );
-}
-
 function defaultServerBase() {
-  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-  if (!window.location.host || window.location.protocol === "file:") return DEPLOYMENT_FALLBACK_SERVER_BASE;
-  if (!shouldUseHostedBackend()) return `${protocol}://${window.location.host}`;
+  // Public itch build always targets the hosted Render backend.
   return DEPLOYMENT_FALLBACK_SERVER_BASE;
 }
 
@@ -302,53 +201,6 @@ function setSheetOpen(isOpen) {
   document.body.classList.toggle("sheet-open", isOpen);
 }
 
-function applyInterfaceMode() {
-  const deckMode = state.interfaceMode === "deck";
-  document.body.classList.toggle("deck-mode", deckMode);
-  if (els.themeToggle) els.themeToggle.textContent = deckMode ? "Signal View" : "Cyber Deck";
-  if (els.deckStatusPill) {
-    els.deckStatusPill.textContent = deckMode ? "Cyber Deck" : "Signal View";
-    els.deckStatusPill.dataset.state = deckMode ? "deck" : "signal";
-  }
-}
-
-function setConsoleTab(tabName) {
-  const nextTab = ["feed", "deck", "chat"].includes(tabName) ? tabName : "feed";
-  state.activeConsoleTab = nextTab;
-  els.consoleTabs.forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.consoleTab === nextTab);
-  });
-  els.consolePanes.forEach((pane) => {
-    pane.classList.toggle("is-active", pane.dataset.consolePane === nextTab);
-  });
-  els.chatForm.classList.toggle("hidden", nextTab !== "chat");
-  els.terminalForm.classList.toggle("hidden", nextTab === "chat");
-  saveConsoleTab();
-}
-
-function applyResponsiveMode() {
-  const compact = isCompactLayout();
-  const touch = isTouchMode();
-  document.body.classList.toggle("is-compact-layout", compact);
-  document.body.classList.toggle("is-touch-ui", touch);
-
-  if (els.heroDetails) {
-    if (compact && els.heroDetails.open) {
-      els.heroDetails.open = false;
-    } else if (!compact && !els.heroDetails.open) {
-      els.heroDetails.open = true;
-    }
-  }
-
-  if (els.advancedServer) {
-    if (!compact && state.connectionStatus === "connected") {
-      els.advancedServer.open = false;
-    }
-  }
-
-  setConsoleTab(state.activeConsoleTab);
-}
-
 function openModal(modal) {
   modal.classList.remove("hidden");
   document.body.classList.add("modal-open");
@@ -375,108 +227,6 @@ function updateConnectionChrome() {
   els.connectionPill.classList.toggle("muted", state.connectionStatus !== "connected");
   els.sessionPill.textContent = `Room ${state.sessionName || "------"}`;
   els.resumeButton.disabled = state.connectionStatus !== "connected";
-}
-
-function matchmakingMetaText(queuedPlayers, position, status = state.matchmakingStatus) {
-  const total = Number(queuedPlayers || 0);
-  const queuePosition = Number(position || 0);
-  if (status === "searching") {
-    if (queuePosition > 1) return `${total} operator(s) searching • your queue position is ${queuePosition}`;
-    if (total > 1) return `${total} operator(s) searching • you are first in line for the next pairing`;
-    return "1 operator searching • waiting for the next challenger to arrive";
-  }
-  if (status === "matched") {
-    return "Room locked • joining the public duel now";
-  }
-  if (status === "error") {
-    return "Retry public matchmaking or fall back to a private room code";
-  }
-  return "Queue empty. Press find match to search worldwide.";
-}
-
-function updateMatchmakingUi() {
-  const labels = {
-    idle: "Idle",
-    searching: "Searching",
-    matched: "Matched",
-    error: "Retry",
-  };
-  els.matchmakingStatusPill.textContent = labels[state.matchmakingStatus] || "Idle";
-  els.matchmakingStatusPill.dataset.state = state.matchmakingStatus;
-  els.matchmakingMessage.textContent = state.matchmakingMessage;
-  els.matchmakingMeta.textContent = state.matchmakingMeta;
-  els.findMatchButton.disabled = state.matchmakingStatus === "searching";
-  els.cancelMatchButton.disabled = state.matchmakingStatus !== "searching";
-  els.sidebarMatchmakingButton.disabled = state.matchmakingStatus === "searching";
-  els.sidebarMatchmakingButton.textContent = state.matchmakingStatus === "searching" ? "Searching..." : "Find Online Match";
-}
-
-function setMatchmakingState(status, message, meta = "") {
-  state.matchmakingStatus = status;
-  state.matchmakingMessage = message;
-  state.matchmakingMeta = meta || matchmakingMetaText(0, null, status);
-  updateMatchmakingUi();
-}
-
-function closeMatchmakingSocket({ preserveState = false } = {}) {
-  window.clearInterval(state.matchmakingHeartbeatTimer);
-  state.matchmakingHeartbeatTimer = null;
-  if (state.matchmakingWs) {
-    try {
-      state.matchmakingWs.onclose = null;
-      state.matchmakingWs.close();
-    } catch {}
-    state.matchmakingWs = null;
-  }
-  if (!preserveState) {
-    setMatchmakingState(
-      "idle",
-      "We will create a fresh session and move both players into the same live game as soon as a match is found.",
-      matchmakingMetaText(0, null, "idle"),
-    );
-  }
-}
-
-function disconnectLiveRoom(reason = "") {
-  window.clearTimeout(state.reconnectTimer);
-  state.reconnectAttempts = 0;
-  if (state.ws) {
-    try {
-      state.ws.onclose = null;
-      state.ws.close();
-    } catch {}
-  }
-  state.ws = null;
-  state.connectionStatus = "idle";
-  state.sessionName = "";
-  state.assignedPlayer = "";
-  state.gameState = null;
-  state.room = null;
-  state.chatMessages = [];
-  state.hoveredNode = null;
-  state.selectedNode = null;
-  state.serverNowBase = 0;
-  state.clientNowBase = 0;
-  state.resultKey = "";
-  els.sessionInput.value = "";
-  syncUrl();
-  updateConnectionChrome();
-  renderChat();
-  renderAll();
-  if (reason) appendLog(`[Network] ${reason}`);
-}
-
-function cancelMatchmaking({ silent = false } = {}) {
-  const socket = state.matchmakingWs;
-  if (socket && socket.readyState === WebSocket.OPEN) {
-    try {
-      socket.send(JSON.stringify({ type: "queue_cancel", client_id: state.clientId }));
-    } catch {}
-  }
-  closeMatchmakingSocket();
-  if (!silent) {
-    updateJoinStatus("Public matchmaking cancelled. You can search again or join a private room.", "warning");
-  }
 }
 
 function syncUrl() {
@@ -663,119 +413,6 @@ function refreshInviteFields() {
   els.inviteStatus.textContent = roomLink ? "Share this link with your opponent. They only need the page and room code." : "Create or join a room first to generate a shareable invite.";
   els.whatsAppShareButton.href = roomLink ? `https://wa.me/?text=${encodeURIComponent(challengeText)}` : "#";
 }
-
-async function startMatchmaking() {
-  await ensureFxContext();
-
-  state.playerName = (els.playerInput.value || "").trim() || randomCallsign();
-  state.serverBase = normalizeServerBase(els.serverInput.value || state.serverBase || defaultServerBase());
-  els.playerInput.value = state.playerName;
-  els.serverInput.value = state.serverBase;
-  saveServerBase(state.serverBase);
-  syncUrl();
-
-  if (state.matchmakingWs && state.matchmakingStatus === "searching") {
-    setSheetOpen(true);
-    updateJoinStatus("Already searching for an online opponent...", "accent");
-    return;
-  }
-
-  closeMatchmakingSocket({ preserveState: true });
-  if (state.ws || state.room || state.gameState) {
-    // Public queueing always targets a fresh duel, so we leave any active room before searching.
-    disconnectLiveRoom("Left the previous room and entered public matchmaking.");
-  }
-
-  setSheetOpen(true);
-  setMatchmakingState(
-    "searching",
-    "Searching for an online opponent...",
-    matchmakingMetaText(1, 1, "searching"),
-  );
-  updateJoinStatus("Public matchmaking armed. Searching for an online opponent...", "accent");
-
-  const socket = new WebSocket(`${state.serverBase}/ws-matchmaking`);
-  state.matchmakingWs = socket;
-
-  socket.onopen = () => {
-    if (socket !== state.matchmakingWs) return;
-    socket.send(JSON.stringify({
-      type: "queue_join",
-      client_id: state.clientId,
-      player_name: state.playerName,
-    }));
-    window.clearInterval(state.matchmakingHeartbeatTimer);
-    state.matchmakingHeartbeatTimer = window.setInterval(() => {
-      if (state.matchmakingWs === socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: "heartbeat", client_id: state.clientId }));
-      }
-    }, MATCHMAKING_HEARTBEAT_MS);
-  };
-
-  socket.onmessage = (event) => {
-    if (socket !== state.matchmakingWs) return;
-    const payload = JSON.parse(event.data);
-
-    if (payload.type === "queue_state") {
-      const status = payload.status === "searching" ? "searching" : "idle";
-      const meta = matchmakingMetaText(payload.queued_players, payload.position, status);
-      setMatchmakingState(status, payload.message || "Searching for opponent...", meta);
-      updateJoinStatus(
-        status === "searching"
-          ? (payload.message || "Searching for opponent...")
-          : "Public matchmaking ready. You can search again or use a private room code.",
-        status === "searching" ? "accent" : "muted",
-      );
-      return;
-    }
-
-    if (payload.type === "match_found") {
-      const sessionId = payload.session_id || "";
-      const opponents = Array.isArray(payload.opponents) ? payload.opponents.filter(Boolean) : [];
-      const meta = opponents.length
-        ? `Room ${sessionId} • Opponent ${opponents.join(", ")}`
-        : `Room ${sessionId} • Public duel locked`;
-
-      setMatchmakingState("matched", payload.message || "Opponent found. Linking now...", meta);
-      closeMatchmakingSocket({ preserveState: true });
-      state.sessionName = sessionId;
-      els.sessionInput.value = sessionId;
-      syncUrl();
-      refreshInviteFields();
-      appendLog(`[Queue] Match found. Linking into room ${sessionId}.`, "success");
-      updateJoinStatus(`Opponent found. Joining public room ${sessionId}...`, "accent");
-      pushToast(opponents.length ? `Match found vs ${opponents.join(", ")}` : "Match found", "success");
-      playUiTone("success");
-      connectToServer(null, { silent: true, skipQueueStop: true });
-      return;
-    }
-
-    if (payload.type === "error") {
-      setMatchmakingState("error", payload.message || "Public matchmaking hit an error.", matchmakingMetaText(0, null, "error"));
-      updateJoinStatus(payload.message || "Public matchmaking hit an error.", "danger");
-      playUiTone("error");
-    }
-  };
-
-  socket.onerror = () => {
-    if (socket !== state.matchmakingWs) return;
-    setMatchmakingState("error", "Public matchmaking could not reach the server.", matchmakingMetaText(0, null, "error"));
-    updateJoinStatus("Public matchmaking could not reach the server.", "danger");
-  };
-
-  socket.onclose = () => {
-    if (socket !== state.matchmakingWs) return;
-    window.clearInterval(state.matchmakingHeartbeatTimer);
-    state.matchmakingHeartbeatTimer = null;
-    state.matchmakingWs = null;
-    if (state.matchmakingStatus === "searching") {
-      setMatchmakingState("error", "Matchmaking connection closed. Retry or use a private room.", matchmakingMetaText(0, null, "error"));
-      updateJoinStatus("Matchmaking disconnected. Retry or use a private room code.", "danger");
-      playUiTone("error");
-    }
-  };
-}
-
 function getViewer() {
   if (!state.gameState?.players?.length) return null;
   return state.gameState.players.find((player) => player.name === state.assignedPlayer)
@@ -849,14 +486,8 @@ function nextHint(viewer) {
   if (state.room.status === "reconnecting") return "Hold position. The duel resumes once both operators are back.";
   if (state.gameState?.winner) return "Use rematch to keep the room score or restart to reset the room.";
   if (timeLeft(viewer?.stunned_until) > 0) return "Use stabilize or wait out the stun before pushing forward.";
-  if (state.selectedNode != null) {
-    return isTouchMode()
-      ? `Selected node ${state.selectedNode}. Use the node actions or terminal send button to execute the play.`
-      : `Queued focus: ${currentNodeAction(state.selectedNode)} from the selected node.`;
-  }
-  return isTouchMode()
-    ? "Tap a node for intel, tap it again to queue the suggested action, or use mission / hint for quick guidance."
-    : "Hover nodes for intel, click a node to queue a command, or run mission / hint.";
+  if (state.selectedNode != null) return `Queued focus: ${currentNodeAction(state.selectedNode)} from the selected node.`;
+  return "Hover nodes for intel, click a node to queue a command, or run mission / hint.";
 }
 
 function sendChat(text) {
@@ -869,7 +500,6 @@ function sendChat(text) {
   }
   state.ws.send(JSON.stringify({ type: "chat", text: trimmed.slice(0, 280) }));
   els.chatInput.value = "";
-  setConsoleTab("chat");
   playUiTone("soft");
 }
 
@@ -884,7 +514,6 @@ function sendCommand(command) {
   state.ws.send(JSON.stringify({ type: "command", command: trimmed }));
   appendLog(`> ${trimmed}`, "command");
   els.commandInput.value = "";
-  setConsoleTab("feed");
   playUiTone("soft");
 }
 
@@ -901,12 +530,7 @@ function sendControl(action) {
 function queueCommand(command) {
   if (!command) return;
   els.commandInput.value = command;
-  if (!isTouchMode()) {
-    els.commandInput.focus();
-  } else {
-    els.commandInput.blur();
-    pushToast(`Queued: ${command}`, "success");
-  }
+  els.commandInput.focus();
   playUiTone("soft");
 }
 
@@ -923,7 +547,6 @@ function scheduleReconnect() {
 function connectToServer(event, options = {}) {
   if (event) event.preventDefault();
   window.clearTimeout(state.reconnectTimer);
-  if (!options.skipQueueStop) cancelMatchmaking({ silent: true });
   state.playerName = (els.playerInput.value || "").trim() || randomCallsign();
   state.sessionName = safeRoomName(els.sessionInput.value);
   state.serverBase = normalizeServerBase(els.serverInput.value);
@@ -951,11 +574,7 @@ function connectToServer(event, options = {}) {
 
   socket.onopen = () => {
     if (socket !== state.ws) return;
-    socket.send(JSON.stringify({
-      type: "join",
-      player_name: state.playerName,
-      client_id: state.clientId,
-    }));
+    socket.send(JSON.stringify({ type: "join", player_name: state.playerName }));
   };
 
   socket.onmessage = (message) => {
@@ -966,15 +585,6 @@ function connectToServer(event, options = {}) {
       state.assignedPlayer = payload.player_name || state.playerName;
       state.room = payload.room || state.room;
       state.reconnectAttempts = 0;
-      if (state.room?.match_type === "public") {
-        setMatchmakingState("idle", "Public duel locked in. Search again any time to find another unknown opponent.", `Current room ${payload.session_id || state.sessionName} • public matchmaking`);
-      } else {
-        setMatchmakingState(
-          "idle",
-          "We will create a fresh session and move both players into the same live game as soon as a match is found.",
-          matchmakingMetaText(0, null, "idle"),
-        );
-      }
       updateJoinStatus(`Linked as ${state.assignedPlayer}. Invite a rival or start reading the map.`, "accent");
       updateConnectionChrome();
       setSheetOpen(false);
@@ -1026,14 +636,13 @@ function connectToServer(event, options = {}) {
 
 async function createRoomAndConnect() {
   await ensureFxContext();
-  cancelMatchmaking({ silent: true });
   updateJoinStatus("Reserving a new duel room...", "accent");
   try {
-    const selectedServerBase = normalizeServerBase(els.serverInput.value || state.serverBase || defaultServerBase());
+    const selectedServerBase = defaultServerBase();
     state.serverBase = selectedServerBase;
     els.serverInput.value = selectedServerBase;
     saveServerBase(selectedServerBase);
-    const response = await fetch(`${apiBaseFromServerBase(selectedServerBase)}/api/rooms/new`);
+    const response = await fetch("https://cyber-hax-server.onrender.com/api/rooms/new");
     if (!response.ok) throw new Error(`room-create-${response.status}`);
     const payload = await response.json();
     if (!payload.room_id) throw new Error("room-create-empty");
@@ -1042,7 +651,9 @@ async function createRoomAndConnect() {
     refreshInviteFields();
     connectToServer();
   } catch {
-    updateJoinStatus("Could not create a room on this server.", "danger");
+    // If room creation is temporarily unavailable, players can still coordinate via a manual room code.
+    updateJoinStatus("Create Room is unavailable right now. Paste a room code from your opponent and press Join Room.", "warning");
+    els.sessionInput.focus();
     playUiTone("error");
   }
 }
@@ -1083,12 +694,9 @@ function syncResultState() {
 
 function renderRoomCard() {
   els.roomCode.textContent = state.sessionName || "------";
-  const roomMode = state.room?.match_type === "public" ? "Public Matchmaking" : "Private Session";
-  els.roomNotice.textContent = state.room?.notice || (state.sessionName ? `${roomMode} armed. Share the link or wait for the second operator.` : "Create or join a room to generate a shareable invite.");
+  els.roomNotice.textContent = state.room?.notice || "Create or join a room to generate a shareable invite.";
   els.matchLabel.textContent = state.room?.match_number ? `#${state.room.match_number}` : "#-";
-  els.modeLabel.textContent = state.room?.status
-    ? `${state.room.match_type === "public" ? "PUBLIC" : "PRIVATE"} · ${state.room.status.toUpperCase()}`
-    : "OFFLINE";
+  els.modeLabel.textContent = state.room?.status ? state.room.status.toUpperCase() : "OFFLINE";
   refreshInviteFields();
 
   const scoreboard = state.room?.scoreboard || [];
@@ -1112,9 +720,7 @@ function renderRoomCard() {
 
   const status = state.room?.status;
   els.waitingBanner.classList.toggle("hidden", status !== "waiting");
-  els.waitingBanner.textContent = state.room?.match_type === "public"
-    ? "Public duel queued. Waiting for the second operator to arm the network."
-    : "Room armed. Share the invite link and wait for the second operator.";
+  els.waitingBanner.textContent = "Room armed. Share the invite link and wait for the second operator.";
   els.reconnectBanner.classList.toggle("hidden", status !== "reconnecting");
   els.reconnectBanner.textContent = "Opponent disconnected. The duel is paused until they reconnect.";
   els.winnerBanner.classList.toggle("hidden", !state.gameState?.winner);
@@ -1144,9 +750,6 @@ function renderHud() {
   const visible = visibleSetForViewer(viewer);
   const connected = state.room?.connected_players?.length || 0;
   els.metricPlayer.textContent = viewer.name;
-  els.metricMode.textContent = state.room?.match_type === "public"
-    ? `public • ${state.room?.status || "linked"}`
-    : state.room?.status || "linked";
   els.metricCurrent.textContent = `${viewer.current}`;
   els.metricServer.textContent = `${state.gameState.server_id}`;
   els.metricDistance.textContent = `${bfsDistance(state.gameState.nodes, viewer.current, state.gameState.server_id) ?? "-"}`;
@@ -1160,9 +763,7 @@ function renderSelectedNodeCard() {
   const viewer = getViewer();
   const nodeId = state.hoveredNode ?? state.selectedNode;
   if (!state.gameState?.nodes?.[nodeId]) {
-    els.selectedNodeCard.textContent = isTouchMode()
-      ? "Tap a node to inspect its links, risks, and ready-to-run actions."
-      : "Select or hover a node to inspect its links, risks, and contextual actions.";
+    els.selectedNodeCard.textContent = "Select or hover a node to inspect its links, risks, and contextual actions.";
     return;
   }
   const node = state.gameState.nodes[nodeId];
@@ -1170,7 +771,6 @@ function renderSelectedNodeCard() {
   const links = (node.neighbors || []).slice().sort((a, b) => a - b).join(", ") || "none";
   const action = currentNodeAction(nodeId);
   const autoUnlock = viewer?.collected_pwds?.[String(nodeId)] ? `unlock ${nodeId} auto` : "";
-  const touchMode = isTouchMode();
   els.selectedNodeCard.innerHTML = `
     <h4>Node ${nodeId}</h4>
     <div class="tag-row">
@@ -1178,12 +778,11 @@ function renderSelectedNodeCard() {
     </div>
     <p>Links: ${links}</p>
     <p>Recommended action: ${action}</p>
-    <p>${touchMode ? "Tap an action below to place it in the terminal. Tap the same node again on the board to queue the default action quickly." : "Click an action below or queue it from the board."}</p>
     <div class="action-row">
-      <button type="button" data-queue="${action}">${touchMode ? "Use" : "Queue"} ${action}</button>
-      <button type="button" data-queue="path ${nodeId}">${touchMode ? "Use" : "Queue"} path</button>
-      <button type="button" data-queue="probe ${nodeId}">${touchMode ? "Use" : "Queue"} probe</button>
-      ${autoUnlock ? `<button type="button" data-queue="${autoUnlock}">${touchMode ? "Use" : "Queue"} unlock</button>` : ""}
+      <button type="button" data-queue="${action}">Queue ${action}</button>
+      <button type="button" data-queue="path ${nodeId}">Queue path</button>
+      <button type="button" data-queue="probe ${nodeId}">Queue probe</button>
+      ${autoUnlock ? `<button type="button" data-queue="${autoUnlock}">Queue unlock</button>` : ""}
     </div>
   `;
   els.selectedNodeCard.querySelectorAll("[data-queue]").forEach((button) => {
@@ -1198,7 +797,7 @@ function createSvg(tagName, attrs = {}) {
 }
 
 function renderTooltip(event) {
-  const nodeId = isTouchMode() ? (state.selectedNode ?? state.hoveredNode) : state.hoveredNode;
+  const nodeId = state.hoveredNode;
   if (!state.gameState?.nodes?.[nodeId]) {
     els.boardTooltip.classList.add("hidden");
     return;
@@ -1209,19 +808,10 @@ function renderTooltip(event) {
   const links = (node.neighbors || []).slice().sort((a, b) => a - b).join(", ") || "none";
   els.boardTooltip.innerHTML = `<strong>Node ${nodeId}</strong><br />${flags}<br />Links: ${links}<br />Suggested action: ${action}`;
   const rect = els.boardStage.getBoundingClientRect();
-  if (isTouchMode()) {
-    els.boardTooltip.style.left = "12px";
-    els.boardTooltip.style.right = "12px";
-    els.boardTooltip.style.top = "auto";
-    els.boardTooltip.style.bottom = "12px";
-  } else {
-    const x = event ? event.clientX - rect.left + 18 : 24;
-    const y = event ? event.clientY - rect.top + 18 : 24;
-    els.boardTooltip.style.right = "auto";
-    els.boardTooltip.style.bottom = "auto";
-    els.boardTooltip.style.left = `${Math.min(x, rect.width - 280)}px`;
-    els.boardTooltip.style.top = `${Math.min(y, rect.height - 140)}px`;
-  }
+  const x = event ? event.clientX - rect.left + 18 : 24;
+  const y = event ? event.clientY - rect.top + 18 : 24;
+  els.boardTooltip.style.left = `${Math.min(x, rect.width - 280)}px`;
+  els.boardTooltip.style.top = `${Math.min(y, rect.height - 140)}px`;
   els.boardTooltip.classList.remove("hidden");
 }
 function renderMap() {
@@ -1230,23 +820,12 @@ function renderMap() {
   state.signalDots = [];
   const viewer = getViewer();
   if (!viewer || !state.gameState) return;
-  const touchMode = isTouchMode();
 
   const visible = visibleSetForViewer(viewer);
   const opponent = getOpponent(viewer);
   const edgeLayer = createSvg("g");
   const signalLayer = createSvg("g");
   const nodeLayer = createSvg("g");
-
-  svg.onclick = (event) => {
-    if (event.target === svg && touchMode) {
-      state.hoveredNode = null;
-      state.selectedNode = null;
-      els.boardTooltip.classList.add("hidden");
-      renderSelectedNodeCard();
-      renderMap();
-    }
-  };
 
   for (const [a, b] of state.gameState.edges || []) {
     if (!visible.has(a) || !visible.has(b)) continue;
@@ -1296,38 +875,25 @@ function renderMap() {
       group.appendChild(badge);
     }
 
-    if (!touchMode) {
-      group.addEventListener("mouseenter", () => {
-        state.hoveredNode = nodeId;
-        renderSelectedNodeCard();
-        renderMap();
-        renderTooltip();
-      });
-      group.addEventListener("mousemove", (event) => {
-        state.hoveredNode = nodeId;
-        renderTooltip(event);
-      });
-      group.addEventListener("mouseleave", () => {
-        state.hoveredNode = null;
-        els.boardTooltip.classList.add("hidden");
-        renderSelectedNodeCard();
-        renderMap();
-      });
-    }
+    group.addEventListener("mouseenter", () => {
+      state.hoveredNode = nodeId;
+      renderSelectedNodeCard();
+      renderMap();
+      renderTooltip();
+    });
+    group.addEventListener("mousemove", (event) => {
+      state.hoveredNode = nodeId;
+      renderTooltip(event);
+    });
+    group.addEventListener("mouseleave", () => {
+      state.hoveredNode = null;
+      els.boardTooltip.classList.add("hidden");
+      renderSelectedNodeCard();
+      renderMap();
+    });
     group.addEventListener("click", async () => {
       await ensureFxContext();
-      const wasSelected = Number(state.selectedNode) === Number(nodeId);
       state.selectedNode = nodeId;
-      state.hoveredNode = touchMode ? nodeId : state.hoveredNode;
-      if (touchMode) {
-        renderSelectedNodeCard();
-        renderMap();
-        renderTooltip();
-        if (wasSelected) {
-          queueCommand(currentNodeAction(nodeId));
-        }
-        return;
-      }
       queueCommand(currentNodeAction(nodeId));
       renderSelectedNodeCard();
       renderMap();
@@ -1359,9 +925,6 @@ function renderCommandDeck() {
 
 function renderAll() {
   updateConnectionChrome();
-  applyInterfaceMode();
-  setConsoleTab(state.activeConsoleTab);
-  updateMatchmakingUi();
   renderRoomCard();
   renderHud();
   renderSelectedNodeCard();
@@ -1384,42 +947,28 @@ function bootstrap() {
   const params = new URLSearchParams(window.location.search);
   state.playerName = params.get("player") || randomCallsign();
   state.sessionName = params.get("session") || "";
-  state.serverBase = normalizeServerBase(params.get("server") || loadStoredServerBase() || defaultServerBase());
+  state.serverBase = defaultServerBase();
   els.playerInput.value = state.playerName;
   els.sessionInput.value = state.sessionName;
   els.serverInput.value = state.serverBase;
-  els.landingInviteHint.textContent = state.sessionName
-    ? `Invite detected for room ${state.sessionName}. Add a callsign and join the duel.`
-    : "Create a private room, paste a friend code, or jump into public matchmaking.";
+  els.landingInviteHint.textContent = state.sessionName ? `Invite detected for room ${state.sessionName}. Add a callsign and join the duel.` : "Create a room to challenge a friend or paste a room code to join instantly.";
 
   renderCommandDeck();
   renderLogs();
   renderChat();
   renderToasts();
-  applyInterfaceMode();
-  applyResponsiveMode();
-  updateMatchmakingUi();
   renderAll();
   refreshInviteFields();
-  updateJoinStatus("Set a callsign, create or enter a room, or search for an online opponent.");
+  updateJoinStatus("Set a callsign, create or enter a room, and connect to the live session server.");
 
   els.joinForm.addEventListener("submit", connectToServer);
   els.createRoomButton.addEventListener("click", createRoomAndConnect);
-  els.findMatchButton.addEventListener("click", startMatchmaking);
-  els.cancelMatchButton.addEventListener("click", () => cancelMatchmaking());
   els.resumeButton.addEventListener("click", () => state.connectionStatus === "connected" && setSheetOpen(false));
   els.settingsToggle.addEventListener("click", () => setSheetOpen(true));
   els.helpButton.addEventListener("click", () => openModal(els.helpModal));
   els.sidebarHelpButton.addEventListener("click", () => openModal(els.helpModal));
-  els.sidebarMatchmakingButton.addEventListener("click", startMatchmaking);
   els.inviteButton.addEventListener("click", () => { refreshInviteFields(); openModal(els.inviteModal); });
   els.sidebarInviteButton.addEventListener("click", () => { refreshInviteFields(); openModal(els.inviteModal); });
-  els.themeToggle.addEventListener("click", () => {
-    state.interfaceMode = state.interfaceMode === "deck" ? "signal" : "deck";
-    saveInterfaceMode();
-    applyInterfaceMode();
-    renderAll();
-  });
   els.copyRoomLinkButton.addEventListener("click", () => copyText(buildRoomLink(), "Room link copied."));
   els.copyInviteButton.addEventListener("click", () => copyText(buildRoomLink(), "Invite link copied."));
   els.copyChallengeButton.addEventListener("click", () => copyText(buildChallengeText(), "Challenge message copied."));
@@ -1437,9 +986,6 @@ function bootstrap() {
   els.bgMusic.volume = 0.42;
   els.bgMusic.addEventListener("play", updateMusicButton);
   els.bgMusic.addEventListener("pause", updateMusicButton);
-  els.consoleTabs.forEach((button) => {
-    button.addEventListener("click", () => setConsoleTab(button.dataset.consoleTab));
-  });
 
   document.querySelectorAll("[data-close-modal]").forEach((button) => {
     button.addEventListener("click", () => closeModal(document.getElementById(button.dataset.closeModal)));
@@ -1458,17 +1004,9 @@ function bootstrap() {
     }
   });
 
-  window.addEventListener("resize", () => {
-    applyResponsiveMode();
-    if (state.gameState) {
-      renderAll();
-    }
-  });
-
   if (params.get("player") && params.get("session")) connectToServer(null, { silent: true });
 
   updateMusicButton();
-  setConsoleTab(state.activeConsoleTab);
   window.setInterval(() => {
     if (state.gameState) renderHud();
   }, 250);

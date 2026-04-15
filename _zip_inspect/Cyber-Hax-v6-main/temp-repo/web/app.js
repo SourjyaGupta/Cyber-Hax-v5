@@ -17,8 +17,6 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 const PROFILE_STORAGE_KEY = "cyberHaxProfile";
 const SERVER_STORAGE_KEY = "cyberHaxServerBase";
 const MATCHMAKING_STORAGE_KEY = "cyberHaxClientId";
-const INTERFACE_MODE_STORAGE_KEY = "cyberHaxInterfaceMode";
-const CONSOLE_TAB_STORAGE_KEY = "cyberHaxConsoleTab";
 const DEPLOYMENT_FALLBACK_SERVER_BASE = "wss://cyber-hax-server.onrender.com";
 const HOSTED_BACKEND_HOST = "cyber-hax-server.onrender.com";
 const TOUCH_MEDIA_QUERY = "(hover: none), (pointer: coarse)";
@@ -46,8 +44,6 @@ const els = {
   sidebarMatchmakingButton: document.getElementById("sidebarMatchmakingButton"),
   settingsToggle: document.getElementById("settingsToggle"),
   musicToggle: document.getElementById("musicToggle"),
-  themeToggle: document.getElementById("themeToggle"),
-  deckStatusPill: document.getElementById("deckStatusPill"),
   matchmakingStatusPill: document.getElementById("matchmakingStatusPill"),
   matchmakingMessage: document.getElementById("matchmakingMessage"),
   matchmakingMeta: document.getElementById("matchmakingMeta"),
@@ -104,8 +100,6 @@ const els = {
   rematchButton: document.getElementById("rematchButton"),
   restartButton: document.getElementById("restartButton"),
   bgMusic: document.getElementById("bgMusic"),
-  consoleTabs: Array.from(document.querySelectorAll("[data-console-tab]")),
-  consolePanes: Array.from(document.querySelectorAll("[data-console-pane]")),
 };
 
 const state = {
@@ -139,8 +133,6 @@ const state = {
   clientNowBase: 0,
   profile: loadProfile(),
   fxContext: null,
-  interfaceMode: loadInterfaceMode(),
-  activeConsoleTab: loadConsoleTab(),
 };
 
 function isTouchMode() {
@@ -195,35 +187,6 @@ function loadStoredServerBase() {
 function saveServerBase(value) {
   try {
     localStorage.setItem(SERVER_STORAGE_KEY, normalizeServerBase(value));
-  } catch {}
-}
-
-function loadInterfaceMode() {
-  try {
-    return localStorage.getItem(INTERFACE_MODE_STORAGE_KEY) === "deck" ? "deck" : "signal";
-  } catch {
-    return "signal";
-  }
-}
-
-function saveInterfaceMode() {
-  try {
-    localStorage.setItem(INTERFACE_MODE_STORAGE_KEY, state.interfaceMode);
-  } catch {}
-}
-
-function loadConsoleTab() {
-  try {
-    const stored = localStorage.getItem(CONSOLE_TAB_STORAGE_KEY) || "";
-    return ["feed", "deck", "chat"].includes(stored) ? stored : "feed";
-  } catch {
-    return "feed";
-  }
-}
-
-function saveConsoleTab() {
-  try {
-    localStorage.setItem(CONSOLE_TAB_STORAGE_KEY, state.activeConsoleTab);
   } catch {}
 }
 
@@ -302,30 +265,6 @@ function setSheetOpen(isOpen) {
   document.body.classList.toggle("sheet-open", isOpen);
 }
 
-function applyInterfaceMode() {
-  const deckMode = state.interfaceMode === "deck";
-  document.body.classList.toggle("deck-mode", deckMode);
-  if (els.themeToggle) els.themeToggle.textContent = deckMode ? "Signal View" : "Cyber Deck";
-  if (els.deckStatusPill) {
-    els.deckStatusPill.textContent = deckMode ? "Cyber Deck" : "Signal View";
-    els.deckStatusPill.dataset.state = deckMode ? "deck" : "signal";
-  }
-}
-
-function setConsoleTab(tabName) {
-  const nextTab = ["feed", "deck", "chat"].includes(tabName) ? tabName : "feed";
-  state.activeConsoleTab = nextTab;
-  els.consoleTabs.forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.consoleTab === nextTab);
-  });
-  els.consolePanes.forEach((pane) => {
-    pane.classList.toggle("is-active", pane.dataset.consolePane === nextTab);
-  });
-  els.chatForm.classList.toggle("hidden", nextTab !== "chat");
-  els.terminalForm.classList.toggle("hidden", nextTab === "chat");
-  saveConsoleTab();
-}
-
 function applyResponsiveMode() {
   const compact = isCompactLayout();
   const touch = isTouchMode();
@@ -345,8 +284,6 @@ function applyResponsiveMode() {
       els.advancedServer.open = false;
     }
   }
-
-  setConsoleTab(state.activeConsoleTab);
 }
 
 function openModal(modal) {
@@ -869,7 +806,6 @@ function sendChat(text) {
   }
   state.ws.send(JSON.stringify({ type: "chat", text: trimmed.slice(0, 280) }));
   els.chatInput.value = "";
-  setConsoleTab("chat");
   playUiTone("soft");
 }
 
@@ -884,7 +820,6 @@ function sendCommand(command) {
   state.ws.send(JSON.stringify({ type: "command", command: trimmed }));
   appendLog(`> ${trimmed}`, "command");
   els.commandInput.value = "";
-  setConsoleTab("feed");
   playUiTone("soft");
 }
 
@@ -1083,12 +1018,9 @@ function syncResultState() {
 
 function renderRoomCard() {
   els.roomCode.textContent = state.sessionName || "------";
-  const roomMode = state.room?.match_type === "public" ? "Public Matchmaking" : "Private Session";
-  els.roomNotice.textContent = state.room?.notice || (state.sessionName ? `${roomMode} armed. Share the link or wait for the second operator.` : "Create or join a room to generate a shareable invite.");
+  els.roomNotice.textContent = state.room?.notice || "Create or join a room to generate a shareable invite.";
   els.matchLabel.textContent = state.room?.match_number ? `#${state.room.match_number}` : "#-";
-  els.modeLabel.textContent = state.room?.status
-    ? `${state.room.match_type === "public" ? "PUBLIC" : "PRIVATE"} · ${state.room.status.toUpperCase()}`
-    : "OFFLINE";
+  els.modeLabel.textContent = state.room?.status ? state.room.status.toUpperCase() : "OFFLINE";
   refreshInviteFields();
 
   const scoreboard = state.room?.scoreboard || [];
@@ -1112,9 +1044,7 @@ function renderRoomCard() {
 
   const status = state.room?.status;
   els.waitingBanner.classList.toggle("hidden", status !== "waiting");
-  els.waitingBanner.textContent = state.room?.match_type === "public"
-    ? "Public duel queued. Waiting for the second operator to arm the network."
-    : "Room armed. Share the invite link and wait for the second operator.";
+  els.waitingBanner.textContent = "Room armed. Share the invite link and wait for the second operator.";
   els.reconnectBanner.classList.toggle("hidden", status !== "reconnecting");
   els.reconnectBanner.textContent = "Opponent disconnected. The duel is paused until they reconnect.";
   els.winnerBanner.classList.toggle("hidden", !state.gameState?.winner);
@@ -1144,9 +1074,6 @@ function renderHud() {
   const visible = visibleSetForViewer(viewer);
   const connected = state.room?.connected_players?.length || 0;
   els.metricPlayer.textContent = viewer.name;
-  els.metricMode.textContent = state.room?.match_type === "public"
-    ? `public • ${state.room?.status || "linked"}`
-    : state.room?.status || "linked";
   els.metricCurrent.textContent = `${viewer.current}`;
   els.metricServer.textContent = `${state.gameState.server_id}`;
   els.metricDistance.textContent = `${bfsDistance(state.gameState.nodes, viewer.current, state.gameState.server_id) ?? "-"}`;
@@ -1359,8 +1286,6 @@ function renderCommandDeck() {
 
 function renderAll() {
   updateConnectionChrome();
-  applyInterfaceMode();
-  setConsoleTab(state.activeConsoleTab);
   updateMatchmakingUi();
   renderRoomCard();
   renderHud();
@@ -1396,7 +1321,6 @@ function bootstrap() {
   renderLogs();
   renderChat();
   renderToasts();
-  applyInterfaceMode();
   applyResponsiveMode();
   updateMatchmakingUi();
   renderAll();
@@ -1414,12 +1338,6 @@ function bootstrap() {
   els.sidebarMatchmakingButton.addEventListener("click", startMatchmaking);
   els.inviteButton.addEventListener("click", () => { refreshInviteFields(); openModal(els.inviteModal); });
   els.sidebarInviteButton.addEventListener("click", () => { refreshInviteFields(); openModal(els.inviteModal); });
-  els.themeToggle.addEventListener("click", () => {
-    state.interfaceMode = state.interfaceMode === "deck" ? "signal" : "deck";
-    saveInterfaceMode();
-    applyInterfaceMode();
-    renderAll();
-  });
   els.copyRoomLinkButton.addEventListener("click", () => copyText(buildRoomLink(), "Room link copied."));
   els.copyInviteButton.addEventListener("click", () => copyText(buildRoomLink(), "Invite link copied."));
   els.copyChallengeButton.addEventListener("click", () => copyText(buildChallengeText(), "Challenge message copied."));
@@ -1437,9 +1355,6 @@ function bootstrap() {
   els.bgMusic.volume = 0.42;
   els.bgMusic.addEventListener("play", updateMusicButton);
   els.bgMusic.addEventListener("pause", updateMusicButton);
-  els.consoleTabs.forEach((button) => {
-    button.addEventListener("click", () => setConsoleTab(button.dataset.consoleTab));
-  });
 
   document.querySelectorAll("[data-close-modal]").forEach((button) => {
     button.addEventListener("click", () => closeModal(document.getElementById(button.dataset.closeModal)));
@@ -1468,7 +1383,6 @@ function bootstrap() {
   if (params.get("player") && params.get("session")) connectToServer(null, { silent: true });
 
   updateMusicButton();
-  setConsoleTab(state.activeConsoleTab);
   window.setInterval(() => {
     if (state.gameState) renderHud();
   }, 250);
